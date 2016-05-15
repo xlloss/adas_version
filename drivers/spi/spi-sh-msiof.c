@@ -256,11 +256,11 @@ static int sh_msiof_modify_ctr_wait(struct sh_msiof_spi_priv *p,
 	data |= set;
 	sh_msiof_write(p, CTR, data);
 
-	for (k = 100; k > 0; k--) {
+	for (k = 100000; k > 0; k--) {
 		if ((sh_msiof_read(p, CTR) & mask) == set)
 			break;
 
-		udelay(10);
+		usleep_range(1, 2);
 	}
 
 	return k > 0 ? 0 : -ETIMEDOUT;
@@ -292,7 +292,7 @@ static void sh_msiof_spi_reset_regs(struct sh_msiof_spi_priv *p)
 		if (!(sh_msiof_read(p, CTR) & mask))
 			break;
 
-		udelay(10);
+		usleep_range(10, 20);
 	}
 }
 
