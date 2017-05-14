@@ -360,6 +360,7 @@ static const struct of_device_id rcar_du_of_table[] = {
 	{ .compatible = "renesas,du-r8a7796", .data = &rcar_du_r8a7796_info },
 	{ .compatible = "renesas,du-r8a77965", .data = &rcar_du_r8a77965_info },
 	{ .compatible = "renesas,du-r8a7797", .data = &rcar_du_r8a7797_info },
+	{ .compatible = "renesas,du-r8a7798", .data = &rcar_du_r8a7797_info },
 	{ }
 };
 

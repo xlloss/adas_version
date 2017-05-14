@@ -162,7 +162,7 @@
 #define VNCSI_IFMD_REG	0x20	/* Video n CSI2 Interface Mode Register */
 
 #define VNCSI_IFMD_DES1		(1 << 26) /* CSI20 */
-#define VNCSI_IFMD_DES0		(1 << 25) /* H3:CSI40/41, M3:CSI40, V3M:CSI40 */
+#define VNCSI_IFMD_DES0		(1 << 25) /* H3,V3H:CSI40/41, M3:CSI40, V3M:CSI40 */
 
 #define VNCSI_IFMD_CSI_CHSEL(n)	(n << 0)
 #define VNCSI_IFMD_SEL_NUMBER	5
@@ -197,6 +197,7 @@ static int ifmd4_init = true;
 
 enum chip_id {
 	RCAR_GEN3,
+	RCAR_V3H,
 	RCAR_V3M,
 	RCAR_M3,
 	RCAR_H3,
@@ -408,6 +409,69 @@ static const struct vin_gen3_ifmd vin_v3_vc_ifmd[] = {
 	},
 	{ 0x0004,
 		{
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+		}
+	},
+};
+
+static const struct vin_gen3_ifmd vin_v3h_vc_ifmd[] = {
+	{ 0x0000,
+		{
+			{RCAR_CSI40, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH1},
+		}
+	},
+	{ 0x0001,
+		{
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+		}
+	},
+	{ 0x0002,
+		{
+			{RCAR_CSI40, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+		}
+	},
+	{ 0x0003,
+		{
+			{RCAR_CSI40, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH2},
+			{RCAR_CSI40, RCAR_VIRTUAL_CH3},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH0},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH1},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH2},
+			{RCAR_CSI41, RCAR_VIRTUAL_CH3},
+		}
+	},
+	{ 0x0004,
+		{
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
+			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
 			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
 			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
 			{RCAR_CSI_CH_NONE, RCAR_VIN_CH_NONE},
@@ -911,7 +975,7 @@ static int rcar_vin_videobuf_setup(struct vb2_queue *vq,
 	struct rcar_vin_cam *cam = icd->host_priv;
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		if ((priv->ratio_h > 0x10000) || (priv->ratio_v > 0x10000)) {
 			dev_err(icd->parent, "Scaling rate parameter error\n");
 			return -EINVAL;
@@ -1020,7 +1084,7 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 	switch (icd->current_fmt->host_fmt->fourcc) {
 	case V4L2_PIX_FMT_NV12:
 		if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-			priv->chip == RCAR_V3M) {
+		    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 			iowrite32(ALIGN((cam->out_width * cam->out_height),
 					 0x80), priv->base + VNUVAOF_REG);
 			dmr = VNDMR_DTMD_YCSEP_YCBCR420;
@@ -1056,7 +1120,7 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 		break;
 	case V4L2_PIX_FMT_XBGR32:
 		if (priv->chip != RCAR_H3 && priv->chip != RCAR_M3 &&
-			priv->chip != RCAR_V3M &&
+		    priv->chip != RCAR_V3M && priv->chip != RCAR_V3H &&
 		    priv->chip != RCAR_GEN2 && priv->chip != RCAR_H1 &&
 		    priv->chip != RCAR_E1)
 			goto e_format;
@@ -1065,7 +1129,7 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 		break;
 	case V4L2_PIX_FMT_ABGR32:
 		if (priv->chip != RCAR_H3 && priv->chip != RCAR_M3 &&
-			priv->chip != RCAR_V3M)
+		    priv->chip != RCAR_V3M && priv->chip != RCAR_V3H)
 			goto e_format;
 
 		dmr = VNDMR_EXRGB | VNDMR_DTMD_ARGB;
@@ -1086,7 +1150,7 @@ static int rcar_vin_setup(struct rcar_vin_priv *priv)
 		vnmc |= VNMC_BPS;
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		if (priv->pdata_flags & RCAR_VIN_CSI2)
 			vnmc &= ~VNMC_DPINE;
 		else
@@ -1457,7 +1521,7 @@ static int rcar_vin_add_device(struct soc_camera_device *icd)
 	pm_runtime_get_sync(ici->v4l2_dev.dev);
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		struct v4l2_subdev *csi2_sd = find_csi2(priv);
 		struct v4l2_subdev *deser_sd = find_deser(priv);
 		int ret = 0;
@@ -1720,7 +1784,7 @@ static int rcar_vin_set_rect(struct soc_camera_device *icd)
 	}
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		if ((icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_NV12) &&
 		    (icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_SBGGR8) &&
 		    (icd->current_fmt->host_fmt->fourcc != V4L2_PIX_FMT_SBGGR12)
@@ -1878,7 +1942,7 @@ static int rcar_vin_set_bus_param(struct soc_camera_device *icd)
 		return ret;
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		if (cfg.type == V4L2_MBUS_CSI2)
 			vnmc &= ~VNMC_DPINE;
 		else
@@ -1886,7 +1950,7 @@ static int rcar_vin_set_bus_param(struct soc_camera_device *icd)
 	}
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M)
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H)
 		val = VNDMR2_FTEV;
 	else
 		val = VNDMR2_FTEV | VNDMR2_VLV(1);
@@ -2484,7 +2548,7 @@ static int rcar_vin_try_fmt(struct soc_camera_device *icd,
 		return ret;
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		/* Adjust max scaling size for Gen3 */
 		if (pix->width > 4096)
 			pix->width = priv->max_width;
@@ -2663,6 +2727,7 @@ static struct soc_camera_host_ops rcar_vin_host_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id rcar_vin_of_table[] = {
+	{ .compatible = "renesas,vin-r8a7798", .data = (void *)RCAR_V3H },
 	{ .compatible = "renesas,vin-r8a7797", .data = (void *)RCAR_V3M },
 	{ .compatible = "renesas,vin-r8a7796", .data = (void *)RCAR_M3 },
 	{ .compatible = "renesas,vin-r8a7795", .data = (void *)RCAR_H3 },
@@ -2978,7 +3043,7 @@ static int rcar_vin_probe(struct platform_device *pdev)
 	}
 
 	if (priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-		priv->chip == RCAR_V3M) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) {
 		priv->max_width = 4096;
 		priv->max_height = 4096;
 	} else {
@@ -2987,7 +3052,8 @@ static int rcar_vin_probe(struct platform_device *pdev)
 	}
 
 	if ((priv->chip == RCAR_H3 || priv->chip == RCAR_M3 ||
-	    priv->chip == RCAR_V3M) && !of_property_read_string(np, "csi,select", &str)) {
+	    priv->chip == RCAR_V3M || priv->chip == RCAR_V3H) &&
+	    !of_property_read_string(np, "csi,select", &str)) {
 		u32 ifmd = 0;
 		bool match_flag = false;
 		const struct vin_gen3_ifmd *gen3_ifmd_table = NULL;
@@ -3062,6 +3128,8 @@ static int rcar_vin_probe(struct platform_device *pdev)
 			gen3_ifmd_table = vin_m3_vc_ifmd;
 		else if (priv->chip == RCAR_V3M)
 			gen3_ifmd_table = vin_v3_vc_ifmd;
+		else if (priv->chip == RCAR_V3H)
+			gen3_ifmd_table = vin_v3h_vc_ifmd;
 
 		for (i = 0; i < num; i++) {
 			if ((gen3_ifmd_table[i].v_sel[priv->index].csi2_ch
@@ -3219,6 +3287,9 @@ static int rcar_vin_resume(struct device *dev)
 	} else if (priv->chip == RCAR_V3M) {
 		ifmd = VNCSI_IFMD_DES1;
 		gen3_ifmd_table = vin_v3_vc_ifmd;
+	} else if (priv->chip == RCAR_V3H) {
+		ifmd = VNCSI_IFMD_DES0;
+		gen3_ifmd_table = vin_v3h_vc_ifmd;
 	}
 
 	for (i = 0; i < num; i++) {

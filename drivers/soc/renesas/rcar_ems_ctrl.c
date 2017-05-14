@@ -30,8 +30,9 @@
 
 #define EMS_THERMAL_ZONE_MAX	10
 
-static const struct soc_device_attribute r8a7797[] = {
+static const struct soc_device_attribute r8a7797_8[] = {
 	{ .soc_id = "r8a7797" },
+	{ .soc_id = "r8a7798" },
 	{ }
 };
 
@@ -274,7 +275,7 @@ static int __init rcar_ems_cpu_shutdown_init(void)
 
 	for_each_online_cpu(cpu) {
 		tmp_node  = of_get_cpu_node(cpu, NULL);
-		if (soc_device_match(r8a7797)) {
+		if (soc_device_match(r8a7797_8)) {
 			if (!of_device_is_compatible(tmp_node, "arm,cortex-a53"))
 				continue;
 		}

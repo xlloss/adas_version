@@ -29,6 +29,11 @@ static const struct soc_device_attribute r8a7797[] = {
 	{ }
 };
 
+static const struct soc_device_attribute r8a7798[] = {
+	{ .soc_id = "r8a7798" },
+	{ }
+};
+
 /* -----------------------------------------------------------------------------
  * Device Access
  */
@@ -151,7 +156,8 @@ static void lif_configure(struct vsp1_entity *entity,
 	format = vsp1_entity_get_pad_format(&lif->entity, lif->entity.config,
 					    LIF_PAD_SOURCE);
 
-	if (vsp1_gen3_vspdl_check(vsp1) || soc_device_match(r8a7797))
+	if (vsp1_gen3_vspdl_check(vsp1) ||
+	    soc_device_match(r8a7797) || soc_device_match(r8a7798))
 		obth = 1500;
 	else
 		obth = 3000;

@@ -163,7 +163,8 @@ enum {
 };
 
 /* Driver's parameters */
-#if defined(CONFIG_CPU_SH4) || defined(CONFIG_ARCH_SHMOBILE)
+#if defined(CONFIG_CPU_SH4) || defined(CONFIG_ARCH_SHMOBILE) || \
+	defined(CONFIG_ARCH_R8A7798)
 #define SH_ETH_RX_ALIGN		32
 #else
 #define SH_ETH_RX_ALIGN		2
@@ -184,6 +185,7 @@ enum GECMR_BIT {
 
 /* EDMR */
 enum DMAC_M_BIT {
+	EDMR_NBST = 0x80,
 	EDMR_EL = 0x40, /* Litte endian */
 	EDMR_DL1 = 0x20, EDMR_DL0 = 0x10,
 	EDMR_SRST_GETHER = 0x03,
@@ -484,6 +486,7 @@ struct sh_eth_cpu_data {
 	unsigned tpauser:1;	/* EtherC have TPAUSER */
 	unsigned bculr:1;	/* EtherC have BCULR */
 	unsigned tsu:1;		/* EtherC have TSU */
+	unsigned nbst:1;	/* E-DMAC have NBST bit in EDMR */
 	unsigned hw_swap:1;	/* E-DMAC have DE bit in EDMR */
 	unsigned rpadir:1;	/* E-DMAC have RPADIR */
 	unsigned no_trimd:1;	/* E-DMAC DO NOT have TRIMD */

@@ -33,6 +33,11 @@ static const struct soc_device_attribute r8a7797[] = {
 	{ /* sentinel */ }
 };
 
+static const struct soc_device_attribute r8a7798[] = {
+	{ .soc_id = "r8a7798" },
+	{ }
+};
+
 #define CPG_PLL0CR		0x00d8
 #define CPG_PLL2CR		0x002c
 #define CPG_PLL4CR		0x01f4
@@ -242,6 +247,10 @@ static unsigned long cpg_z2_clk_recalc_rate(struct clk_hw *hw,
 	mult = 32 - val;
 
 	rate = div_u64((u64)parent_rate * mult + 16, 32);
+
+	if (soc_device_match(r8a7798))
+		rate /= 2;
+
 	/* Round to closest value at 100MHz unit */
 	rate = 100000000*DIV_ROUND_CLOSEST(rate, 100000000);
 	return rate;
@@ -302,6 +311,9 @@ static long cpg_z2_clk_round_rate(struct clk_hw *hw, unsigned long rate,
 {
 	unsigned long prate  = *parent_rate;
 	unsigned int mult;
+
+	if (soc_device_match(r8a7798))
+		prate /= 2;
 
 	mult = div_u64((u64)rate * 32 + prate/2, prate);
 	mult = clamp(mult, 1U, 32U);
@@ -382,7 +394,7 @@ static int cpg_z2_clk_set_rate(struct clk_hw *hw, unsigned long rate,
 	u32 val, kick;
 	unsigned int i;
 
-	if (soc_device_match(r8a7797)){
+	if (soc_device_match(r8a7797) || soc_device_match(r8a7798)){
 		pr_info("Do not support V3M's Z2 clock changing\n");
 		return 0;
 	}
@@ -915,6 +927,11 @@ struct clk * __init rcar_gen3_cpg_clk_register(struct device *dev,
 		 */
 		if (cpg_quirks & RCLK_CKSEL_RESEVED)
 			break;
+
+		if (soc_device_match(r8a7798) && (cpg_mode ^ BIT(29))) {
+			parent = clks[cpg_clk_extalr];
+			break;
+		}
 
 		/* Select parent clock of RCLK by MD28 */
 		if (cpg_mode & BIT(28))

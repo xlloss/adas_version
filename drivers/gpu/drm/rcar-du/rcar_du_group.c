@@ -35,8 +35,9 @@
 #include "rcar_du_group.h"
 #include "rcar_du_regs.h"
 
-static const struct soc_device_attribute r8a7797[] = {
+static const struct soc_device_attribute r8a7797_8[] = {
 	{ .soc_id = "r8a7797" },
+	{ .soc_id = "r8a7798" },
 	{ }
 };
 
@@ -161,7 +162,7 @@ static void rcar_du_group_setup(struct rcar_du_group *rgrp)
 
 	/* Apply planes to CRTCs association. */
 	mutex_lock(&rgrp->lock);
-	if (!soc_device_match(r8a7797))
+	if (!soc_device_match(r8a7797_8))
 		rcar_du_group_write(rgrp, DPTSR, (rgrp->dptsr_planes << 16) |
 				    rgrp->dptsr_planes);
 

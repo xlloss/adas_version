@@ -30,6 +30,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
+#include <linux/sys_soc.h>
 
 #define PCIECAR			0x000010
 #define PCIECCTLR		0x000018
@@ -40,6 +41,8 @@
 #define PCIEMSR			0x000028
 #define PCIEINTXR		0x000400
 #define PCIEMSITXR		0x000840
+
+#define GEN3_PCIEPHYSR		0x07f0
 
 /* Transfer control */
 #define PCIETCTLR		0x02000
@@ -118,6 +121,9 @@
 #define GEN2_PCIEPHYDATA	0x784
 #define GEN2_PCIEPHYCTRL	0x78c
 
+/* R-Car Gen3 R8A7798 */
+#define R8A7798_PCIEPHYCTL	0x4000
+
 #define INT_PCI_MSI_NR	32
 
 #define RCONF(x)	(PCICONF(0)+(x))
@@ -131,6 +137,11 @@
 
 #define RCAR_PCI_MAX_RESOURCES 4
 #define MAX_NR_INBOUND_MAPS 6
+
+static const struct soc_device_attribute r8a7798[] = {
+	{ .soc_id = "r8a7798" },
+	{ }
+};
 
 struct rcar_msi {
 	DECLARE_BITMAP(used, INT_PCI_MSI_NR);
@@ -151,6 +162,7 @@ static inline struct rcar_msi *to_rcar_msi(struct msi_controller *chip)
 struct rcar_pcie {
 	struct device		*dev;
 	void __iomem		*base;
+	void __iomem		*phy_base;
 	struct list_head	resources;
 	int			root_bus_nr;
 	struct clk		*clk;
@@ -159,6 +171,18 @@ struct rcar_pcie {
 };
 
 static int rcar_pcie_wait_for_dl(struct rcar_pcie *pcie);
+
+static void rcar_pci_phy_write_reg(struct rcar_pcie *pcie, unsigned long val,
+			       unsigned long reg)
+{
+	writel(val, pcie->phy_base + reg);
+}
+
+static unsigned long rcar_pci_phy_read_reg(struct rcar_pcie *pcie,
+				       unsigned long reg)
+{
+	return readl(pcie->phy_base + reg);
+}
 
 static void rcar_pci_write_reg(struct rcar_pcie *pcie, unsigned long val,
 			       unsigned long reg)
@@ -672,6 +696,22 @@ static int rcar_pcie_hw_init(struct rcar_pcie *pcie)
 	return 0;
 }
 
+static int rcar_pcie_hw_init_r8a7798(struct rcar_pcie *pcie)
+{
+	unsigned int timeout = 10;
+
+	rcar_pci_phy_write_reg(pcie, 0, R8A7798_PCIEPHYCTL);
+
+	while (timeout--) {
+		if (rcar_pci_read_reg(pcie, GEN3_PCIEPHYSR))
+			return rcar_pcie_hw_init(pcie);
+
+		msleep(5);
+	}
+
+	return -ETIMEDOUT;
+}
+
 static int rcar_pcie_hw_init_h1(struct rcar_pcie *pcie)
 {
 	unsigned int timeout = 10;
@@ -998,6 +1038,16 @@ static int rcar_pcie_get_resources(struct rcar_pcie *pcie)
 	if (IS_ERR(pcie->base))
 		return PTR_ERR(pcie->base);
 
+	if (soc_device_match(r8a7798)) {
+		err = of_address_to_resource(dev->of_node, 1, &res);
+		if (err)
+			return err;
+
+		pcie->phy_base = devm_ioremap_resource(dev, &res);
+		if (IS_ERR(pcie->phy_base))
+			return PTR_ERR(pcie->base);
+	}
+
 	pcie->bus_clk = devm_clk_get(dev, "pcie_bus");
 	if (IS_ERR(pcie->bus_clk)) {
 		dev_err(dev, "cannot get pcie bus clock\n");
@@ -1153,6 +1203,7 @@ static const struct of_device_id rcar_pcie_of_match[] = {
 	{ .compatible = "renesas,pcie-r8a7795", .data = rcar_pcie_hw_init },
 	{ .compatible = "renesas,pcie-r8a7796", .data = rcar_pcie_hw_init },
 	{ .compatible = "renesas,pcie-r8a77965", .data = rcar_pcie_hw_init },
+	{ .compatible = "renesas,pcie-r8a7798", .data = rcar_pcie_hw_init_r8a7798 },
 	{},
 };
 
@@ -1347,7 +1398,13 @@ static struct platform_driver rcar_pcie_driver = {
 	},
 	.probe = rcar_pcie_probe,
 };
-builtin_platform_driver(rcar_pcie_driver);
+/* builtin_platform_driver(rcar_pcie_driver); */
+
+static int __init rcar_pcie_init(void)
+{
+	return platform_driver_register(&rcar_pcie_driver);
+}
+late_initcall(rcar_pcie_init);
 
 static int rcar_pcie_pci_notifier(struct notifier_block *nb,
 			    unsigned long action, void *data)

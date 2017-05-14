@@ -456,6 +456,9 @@ static void sh_eth_select_mii(struct net_device *ndev)
 	u32 value;
 
 	switch (mdp->phy_interface) {
+	case PHY_INTERFACE_MODE_RGMII:
+		value = 0x3;
+		break;
 	case PHY_INTERFACE_MODE_GMII:
 		value = 0x2;
 		break;
@@ -643,6 +646,36 @@ static struct sh_eth_cpu_data r8a779x_data = {
 	.tpauser	= 1,
 	.hw_swap	= 1,
 	.rmiimode	= 1,
+	.magic		= 1,
+};
+
+/* R8A7798 */
+static struct sh_eth_cpu_data r8a7798_data = {
+	.set_duplex	= sh_eth_set_duplex,
+	.set_rate	= sh_eth_set_rate_gether,
+
+	.register_type  = SH_ETH_REG_GIGABIT,
+
+	.ecsr_value	= ECSR_PSRTO | ECSR_LCHNG | ECSR_ICD | ECSR_MPD,
+	.ecsipr_value	= ECSIPR_PSRTOIP | ECSIPR_LCHNGIP | ECSIPR_ICDIP |
+			  ECSIPR_MPDIP,
+	.eesipr_value	= 0x01ff009f,
+
+	.tx_check       = EESR_FTC | EESR_CND | EESR_DLC | EESR_CD | EESR_RTO,
+	.eesr_err_check = EESR_TWB1 | EESR_TWB | EESR_TABT | EESR_RABT |
+			  EESR_RFE | EESR_RDE | EESR_RFRMER | EESR_TFE |
+			  EESR_TDE | EESR_ECI,
+	.fdr_value	= 0x0000070f,
+
+	.apr		= 1,
+	.mpr		= 1,
+	.tpauser	= 1,
+	.nbst		= 1,
+	.hw_swap	= 1,
+	.no_trimd	= 1,
+	.no_ade		= 1,
+	.select_mii	= 1,
+	.shift_rd0	= 1,
 	.magic		= 1,
 };
 #endif /* CONFIG_OF */
@@ -1088,14 +1121,14 @@ static void sh_eth_ring_free(struct net_device *ndev)
 
 	if (mdp->rx_ring) {
 		ringsize = sizeof(struct sh_eth_rxdesc) * mdp->num_rx_ring;
-		dma_free_coherent(NULL, ringsize, mdp->rx_ring,
+		dma_free_coherent(&ndev->dev, ringsize, mdp->rx_ring,
 				  mdp->rx_desc_dma);
 		mdp->rx_ring = NULL;
 	}
 
 	if (mdp->tx_ring) {
 		ringsize = sizeof(struct sh_eth_txdesc) * mdp->num_tx_ring;
-		dma_free_coherent(NULL, ringsize, mdp->tx_ring,
+		dma_free_coherent(&ndev->dev, ringsize, mdp->tx_ring,
 				  mdp->tx_desc_dma);
 		mdp->tx_ring = NULL;
 	}
@@ -1209,9 +1242,16 @@ static int sh_eth_ring_init(struct net_device *ndev)
 	if (!mdp->tx_skbuff)
 		goto ring_free;
 
+#ifdef CONFIG_ARM64
+	{
+		struct device_node *np;
+		np = of_find_compatible_node(NULL, NULL, "shared-dma-pool");
+		of_dma_configure(&ndev->dev, np);
+	}
+#endif
 	/* Allocate all Rx descriptors. */
 	rx_ringsize = sizeof(struct sh_eth_rxdesc) * mdp->num_rx_ring;
-	mdp->rx_ring = dma_alloc_coherent(NULL, rx_ringsize, &mdp->rx_desc_dma,
+	mdp->rx_ring = dma_alloc_coherent(&ndev->dev, rx_ringsize, &mdp->rx_desc_dma,
 					  GFP_KERNEL);
 	if (!mdp->rx_ring)
 		goto ring_free;
@@ -1220,7 +1260,7 @@ static int sh_eth_ring_init(struct net_device *ndev)
 
 	/* Allocate all Tx descriptors. */
 	tx_ringsize = sizeof(struct sh_eth_txdesc) * mdp->num_tx_ring;
-	mdp->tx_ring = dma_alloc_coherent(NULL, tx_ringsize, &mdp->tx_desc_dma,
+	mdp->tx_ring = dma_alloc_coherent(&ndev->dev, tx_ringsize, &mdp->tx_desc_dma,
 					  GFP_KERNEL);
 	if (!mdp->tx_ring)
 		goto ring_free;
@@ -1260,6 +1300,10 @@ static int sh_eth_dev_init(struct net_device *ndev)
 	else
 #endif
 		sh_eth_write(ndev, 0, EDMR);
+
+	/* DMA transfer burst mode */
+	if (mdp->cd->nbst)
+		sh_eth_modify(ndev, EDMR, EDMR_NBST, EDMR_NBST);
 
 	/* FIFO size set */
 	sh_eth_write(ndev, mdp->cd->fdr_value, FDR);
@@ -3001,6 +3045,7 @@ static const struct of_device_id sh_eth_match_table[] = {
 	{ .compatible = "renesas,ether-r8a7791", .data = &r8a779x_data },
 	{ .compatible = "renesas,ether-r8a7793", .data = &r8a779x_data },
 	{ .compatible = "renesas,ether-r8a7794", .data = &r8a779x_data },
+	{ .compatible = "renesas,gether-r8a7798", .data = &r8a7798_data },
 	{ .compatible = "renesas,ether-r7s72100", .data = &r7s72100_data },
 	{ }
 };

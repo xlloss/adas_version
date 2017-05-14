@@ -415,6 +415,11 @@ static int rcar_gen3_r8a7797_thermal_init(struct rcar_thermal_priv *priv)
 	return 0;
 }
 
+static int rcar_gen3_r8a7798_thermal_init(struct rcar_thermal_priv *priv)
+{
+	return rcar_gen3_r8a7796_thermal_init(priv);
+}
+
 /*
  *		Interrupt
  */
@@ -500,11 +505,16 @@ static const struct rcar_thermal_data r8a7797_data = {
 	.thermal_init = rcar_gen3_r8a7797_thermal_init,
 };
 
+static const struct rcar_thermal_data r8a7798_data = {
+	.thermal_init = rcar_gen3_r8a7798_thermal_init,
+};
+
 static const struct of_device_id rcar_thermal_dt_ids[] = {
 	{ .compatible = "renesas,thermal-r8a7795", .data = &r8a7795_data},
 	{ .compatible = "renesas,thermal-r8a7796", .data = &r8a7796_data},
 	{ .compatible = "renesas,thermal-r8a77965", .data = &r8a7796_data},
 	{ .compatible = "renesas,thermal-r8a7797", .data = &r8a7797_data},
+	{ .compatible = "renesas,thermal-r8a7798", .data = &r8a7798_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, rcar_thermal_dt_ids);
