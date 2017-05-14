@@ -6,6 +6,25 @@ config SOC_CAMERA_IMX074
 	help
 	  This driver supports IMX074 cameras from Sony
 
+config SOC_CAMERA_MAX9286
+	tristate "max9286 GMSL support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a MAXIM max9286 GMSL driver
+
+config SOC_CAMERA_OV106XX
+	tristate "ov106xx camera support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is a runtime detected OmniVision ov10635 or ov490-ov10640
+	  or ov495-ov2775 sensors camera driver
+
+config SOC_CAMERA_TI9X4
+	tristate "ti9x4 FPDLinkIII support"
+	depends on SOC_CAMERA && I2C
+	help
+	  This is an Texas Instruments ti9X4 FPDLinkIII driver
+
 config SOC_CAMERA_MT9M001
 	tristate "mt9m001 support"
 	depends on SOC_CAMERA && I2C
