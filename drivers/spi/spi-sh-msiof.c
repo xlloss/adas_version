@@ -3,7 +3,8 @@
  *
  * Copyright (C) 2016-2017 Renesas Electronics Corporation
  * Copyright (c) 2009 Magnus Damm
- * Copyright (C) 2014 Glider bvba
+ * Copyright (C) 2014 Renesas Electronics Corporation
+ * Copyright (C) 2014-2017 Glider bvba
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,7 +36,6 @@
 
 #include <asm/unaligned.h>
 
-
 struct sh_msiof_chipdata {
 	u16 tx_fifo_size;
 	u16 rx_fifo_size;
@@ -62,6 +62,7 @@ struct sh_msiof_spi_priv {
 	void *rx_dma_page;
 	dma_addr_t tx_dma_addr;
 	dma_addr_t rx_dma_addr;
+	bool slave_aborted;
 	unsigned int quirks;
 };
 
@@ -402,18 +403,21 @@ static void sh_msiof_spi_set_pin_regs(struct sh_msiof_spi_priv *p,
 	tmp |= lsb_first << MDR1_BITLSB_SHIFT;
 	tmp |= sh_msiof_spi_get_dtdl_and_syncdl(p);
 	if (p->quirks & TRANSFER_WORKAROUND_H3WS10) {
-		if (p->mode == SPI_MSIOF_MASTER) {
+		if (!spi_controller_is_slave(p->master)) {
 			tmp &= ~MDR1_DTDL_MASK;
 			tmp |= 0 << MDR1_DTDL_SHIFT;
 		}
 	}
 	if (p->quirks & TRANSFER_WORKAROUND_H3WS11) {
-		if (p->mode == SPI_MSIOF_MASTER) {
+		if (!spi_controller_is_slave(p->master)) {
 			tmp &= ~MDR1_DTDL_MASK;
 			tmp |= 1 << MDR1_DTDL_SHIFT;
 		}
 	}
-	if (p->mode == SPI_MSIOF_MASTER) {
+
+	if (spi_controller_is_slave(p->master)) {
+		sh_msiof_write(p, TMDR1, tmp | TMDR1_PCON);
+	} else {
 		if (p->cs == 1)
 			tmp |= MDR1_SYNCCH_SS1;
 		else if (p->cs == 2)
@@ -421,16 +425,15 @@ static void sh_msiof_spi_set_pin_regs(struct sh_msiof_spi_priv *p,
 		else
 			tmp &= ~MDR1_SYNCCH_MASK;
 		sh_msiof_write(p, TMDR1, tmp | MDR1_TRMD | TMDR1_PCON);
-	} else
-		sh_msiof_write(p, TMDR1, tmp | TMDR1_PCON);
+	}
 	if (p->quirks & TRANSFER_WORKAROUND_H3WS10) {
-		if (p->mode == SPI_MSIOF_MASTER) {
+		if (!spi_controller_is_slave(p->master)) {
 			tmp &= ~MDR1_DTDL_MASK;
 			tmp |= 2 << MDR1_DTDL_SHIFT;
 		}
 	}
 	if (p->quirks & TRANSFER_WORKAROUND_H3WS11) {
-		if (p->mode == SPI_MSIOF_MASTER) {
+		if (!spi_controller_is_slave(p->master)) {
 			tmp &= ~MDR1_DTDL_MASK;
 			tmp |= 1 << MDR1_DTDL_SHIFT;
 		}
@@ -443,7 +446,7 @@ static void sh_msiof_spi_set_pin_regs(struct sh_msiof_spi_priv *p,
 
 	tmp = 0;
 	if (p->quirks & TRANSFER_WORKAROUND_H3WS10) {
-		if (p->mode == SPI_MSIOF_MASTER) {
+		if (!spi_controller_is_slave(p->master)) {
 			tmp |= 0 << CTR_TSCKIZ_POL_SHIFT;
 			tmp |= 0 << CTR_RSCKIZ_POL_SHIFT;
 		} else {
@@ -680,10 +683,11 @@ static int sh_msiof_prepare_message(struct spi_master *master,
 
 static int sh_msiof_spi_start(struct sh_msiof_spi_priv *p, void *rx_buf)
 {
+	bool slave = spi_controller_is_slave(p->master);
 	int ret = 0;
 
 	/* setup clock and rx/tx signals */
-	if (p->mode == SPI_MSIOF_MASTER)
+	if (!slave)
 		ret = sh_msiof_modify_ctr_wait(p, 0, CTR_TSCKE);
 	if (rx_buf && !ret)
 		ret = sh_msiof_modify_ctr_wait(p, 0, CTR_RXE);
@@ -691,7 +695,7 @@ static int sh_msiof_spi_start(struct sh_msiof_spi_priv *p, void *rx_buf)
 		ret = sh_msiof_modify_ctr_wait(p, 0, CTR_TXE);
 
 	/* start by setting frame bit */
-	if (!ret && p->mode == SPI_MSIOF_MASTER)
+	if (!ret && !slave)
 		ret = sh_msiof_modify_ctr_wait(p, 0, CTR_TFSE);
 
 	return ret;
@@ -699,19 +703,48 @@ static int sh_msiof_spi_start(struct sh_msiof_spi_priv *p, void *rx_buf)
 
 static int sh_msiof_spi_stop(struct sh_msiof_spi_priv *p, void *rx_buf)
 {
+	bool slave = spi_controller_is_slave(p->master);
 	int ret = 0;
 
 	/* shut down frame, rx/tx and clock signals */
-	if (p->mode == SPI_MSIOF_MASTER)
+	if (!slave)
 		ret = sh_msiof_modify_ctr_wait(p, CTR_TFSE, 0);
 	if (!ret)
 		ret = sh_msiof_modify_ctr_wait(p, CTR_TXE, 0);
 	if (rx_buf && !ret)
 		ret = sh_msiof_modify_ctr_wait(p, CTR_RXE, 0);
-	if (!ret && p->mode == SPI_MSIOF_MASTER)
+	if (!ret && !slave)
 		ret = sh_msiof_modify_ctr_wait(p, CTR_TSCKE, 0);
 
 	return ret;
+}
+
+static int sh_msiof_slave_abort(struct spi_master *master)
+{
+	struct sh_msiof_spi_priv *p = spi_master_get_devdata(master);
+
+	p->slave_aborted = true;
+	complete(&p->done);
+	return 0;
+}
+
+static int sh_msiof_wait_for_completion(struct sh_msiof_spi_priv *p,
+					struct completion *done)
+{
+	if (spi_controller_is_slave(p->master)) {
+		if (wait_for_completion_interruptible(done) ||
+		    p->slave_aborted) {
+			dev_dbg(&p->pdev->dev, "interrupted\n");
+			return -EINTR;
+		}
+	} else {
+		if (!wait_for_completion_timeout(done, HZ)) {
+			dev_err(&p->pdev->dev, "timeout\n");
+			return -ETIMEDOUT;
+		}
+	}
+
+	return 0;
 }
 
 static int sh_msiof_spi_txrx_once(struct sh_msiof_spi_priv *p,
@@ -724,9 +757,6 @@ static int sh_msiof_spi_txrx_once(struct sh_msiof_spi_priv *p,
 {
 	int fifo_shift;
 	int ret;
-	unsigned long timeout;
-
-	timeout = (p->mode == SPI_MSIOF_MASTER) ? HZ : MAX_SCHEDULE_TIMEOUT;
 
 	/* limit maximum word transfer to rx/tx fifo size */
 	if (tx_buf)
@@ -749,6 +779,7 @@ static int sh_msiof_spi_txrx_once(struct sh_msiof_spi_priv *p,
 		tx_fifo(p, tx_buf, words, fifo_shift);
 
 	reinit_completion(&p->done);
+	p->slave_aborted = false;
 
 	ret = sh_msiof_spi_start(p, rx_buf);
 	if (ret) {
@@ -757,21 +788,9 @@ static int sh_msiof_spi_txrx_once(struct sh_msiof_spi_priv *p,
 	}
 
 	/* wait for tx fifo to be emptied / rx fifo to be filled */
-	if (p->mode == SPI_MSIOF_MASTER)
-		ret = wait_for_completion_timeout(&p->done, timeout);
-	else {
-		ret = wait_for_completion_interruptible_timeout(
-						&p->done, timeout);
-		if (ret == -ERESTARTSYS) {
-			dev_err(&p->pdev->dev, "PIO mode. Task interrupt\n");
-			goto stop_reset;
-		}
-	}
-	if (!ret) {
-		dev_err(&p->pdev->dev, "PIO timeout\n");
-		ret = -ETIMEDOUT;
+	ret = sh_msiof_wait_for_completion(p, &p->done);
+	if (ret)
 		goto stop_reset;
-	}
 
 	/* read rx fifo */
 	if (rx_buf)
@@ -817,9 +836,6 @@ static int sh_msiof_dma_once(struct sh_msiof_spi_priv *p, const void *tx,
 	struct dma_async_tx_descriptor *desc_tx = NULL, *desc_rx = NULL;
 	dma_cookie_t cookie;
 	int ret;
-	unsigned long timeout;
-
-	timeout = (p->mode == SPI_MSIOF_MASTER) ? HZ : MAX_SCHEDULE_TIMEOUT;
 
 	/* First prepare and submit the DMA request(s), as this may fail */
 	if (rx) {
@@ -869,6 +885,7 @@ static int sh_msiof_dma_once(struct sh_msiof_spi_priv *p, const void *tx,
 	reinit_completion(&p->done);
 	reinit_completion(&p->done_dma_tx);
 	reinit_completion(&p->done_dma_rx);
+	p->slave_aborted = false;
 
 	/* Now start DMA */
 	if (rx)
@@ -884,64 +901,23 @@ static int sh_msiof_dma_once(struct sh_msiof_spi_priv *p, const void *tx,
 
 	/* wait for Tx/Rx DMA completion */
 	if (tx) {
-		if (p->mode == SPI_MSIOF_MASTER)
-			ret = wait_for_completion_timeout(
-					&p->done_dma_tx, timeout);
-		else {
-			ret = wait_for_completion_interruptible_timeout(
-						&p->done_dma_tx, timeout);
-			if (ret == -ERESTARTSYS) {
-				dev_err(&p->pdev->dev, "Tx DMA. Task interrupt\n");
-				goto stop_reset;
-			}
-		}
-		if (!ret) {
-			dev_err(&p->pdev->dev, "Tx DMA timeout\n");
-			ret = -ETIMEDOUT;
+		ret = sh_msiof_wait_for_completion(p, &p->done_dma_tx);
+		if (ret)
 			goto stop_reset;
-		}
+
 		if (!rx) {
 			ier_bits = IER_TEOFE;
 			sh_msiof_write(p, IER, ier_bits);
 
 			/* wait for tx fifo to be emptied */
-			if (p->mode == SPI_MSIOF_MASTER)
-				ret = wait_for_completion_timeout(
-							&p->done, timeout);
-			else {
-				ret = wait_for_completion_interruptible_timeout(
-							&p->done, timeout);
-				if (ret == -ERESTARTSYS) {
-					dev_err(&p->pdev->dev,
-						"Tx fifo to be emptied. Task interrupt\n");
-					goto stop_reset;
-				}
-			}
-			if (!ret) {
-				dev_err(&p->pdev->dev,
-					"Tx fifo to be emptied timeout\n");
-				ret = -ETIMEDOUT;
+			if (sh_msiof_wait_for_completion(p, &p->done))
 				goto stop_reset;
-			}
 		}
 	}
 	if (rx) {
-		if (p->mode == SPI_MSIOF_MASTER)
-			ret = wait_for_completion_timeout(
-					&p->done_dma_rx, timeout);
-		else {
-			ret = wait_for_completion_interruptible_timeout(
-						&p->done_dma_rx, timeout);
-			if (ret == -ERESTARTSYS) {
-				dev_err(&p->pdev->dev, "Rx DMA. Task interrupt\n");
-				goto stop_reset;
-			}
-		}
-		if (!ret) {
-			dev_err(&p->pdev->dev, "Rx DMA timeout\n");
-			ret = -ETIMEDOUT;
+		ret = sh_msiof_wait_for_completion(p, &p->done_dma_rx);
+		if (ret)
 			goto stop_reset;
-		}
 	}
 
 	sh_msiof_write(p, IER, 0);
@@ -1040,7 +1016,7 @@ static int sh_msiof_transfer_one(struct spi_master *master,
 	sh_msiof_spi_reset_regs(p);
 
 	/* setup clocks (clock already enabled in chipselect()) */
-	if (p->mode == SPI_MSIOF_MASTER)
+	if (!spi_controller_is_slave(p->master))
 		sh_msiof_spi_set_clk_regs(p, clk_get_rate(p->clk), t->speed_hz);
 
 	while (master->dma_tx && len > 15) {
@@ -1071,7 +1047,7 @@ static int sh_msiof_transfer_one(struct spi_master *master,
 			copy32(p->tx_dma_page, tx_buf, l / 4);
 
 #ifdef CONFIG_SPI_SH_MSIOF_TRANSFER_SYNC_DEBUG
-		if (p->mode == SPI_MSIOF_MASTER)
+		if (!spi_controller_is_slave(p->master))
 			msleep(TRANSFAR_SYNC_DELAY);
 #endif /* CONFIG_SPI_SH_MSIOF_TRANSFER_SYNC_DEBUG */
 
@@ -1148,9 +1124,8 @@ static int sh_msiof_transfer_one(struct spi_master *master,
 	words = len / bytes_per_word;
 
 	while (words > 0) {
-
 #ifdef CONFIG_SPI_SH_MSIOF_TRANSFER_SYNC_DEBUG
-		if (p->mode == SPI_MSIOF_MASTER)
+		if (!spi_controller_is_slave(p->master))
 			msleep(TRANSFAR_SYNC_DELAY);
 #endif /* CONFIG_SPI_SH_MSIOF_TRANSFER_SYNC_DEBUG */
 
@@ -1209,19 +1184,18 @@ static struct sh_msiof_spi_info *sh_msiof_spi_parse_dt(struct device *dev)
 	if (!info)
 		return NULL;
 
+	info->mode = of_property_read_bool(np, "spi-slave") ? MSIOF_SPI_SLAVE
+							    : MSIOF_SPI_MASTER;
+
 	/* Parse the MSIOF properties */
-	of_property_read_u32(np, "num-cs", &num_cs);
+	if (info->mode == MSIOF_SPI_MASTER)
+		of_property_read_u32(np, "num-cs", &num_cs);
 	of_property_read_u32(np, "renesas,tx-fifo-size",
 					&info->tx_fifo_override);
 	of_property_read_u32(np, "renesas,rx-fifo-size",
 					&info->rx_fifo_override);
 	of_property_read_u32(np, "renesas,dtdl", &info->dtdl);
 	of_property_read_u32(np, "renesas,syncdl", &info->syncdl);
-
-	if (of_property_read_bool(np, "slave"))
-		info->mode = SPI_MSIOF_SLAVE;
-	else
-		info->mode = SPI_MSIOF_MASTER;
 
 	info->num_chipselect = num_cs;
 
@@ -1372,6 +1346,7 @@ static int sh_msiof_spi_probe(struct platform_device *pdev)
 	struct spi_master *master;
 	const struct sh_msiof_chipdata *chipdata;
 	const struct of_device_id *of_id;
+	struct sh_msiof_spi_info *info;
 	struct sh_msiof_spi_priv *p;
 	struct clk *ref_clk;
 	u32 clk_rate = 0;
@@ -1379,31 +1354,34 @@ static int sh_msiof_spi_probe(struct platform_device *pdev)
 	int ret;
 	const struct soc_device_attribute *attr;
 
-	master = spi_alloc_master(&pdev->dev, sizeof(struct sh_msiof_spi_priv));
-	if (master == NULL) {
-		dev_err(&pdev->dev, "failed to allocate spi master\n");
-		return -ENOMEM;
+	of_id = of_match_device(sh_msiof_match, &pdev->dev);
+	if (of_id) {
+		chipdata = of_id->data;
+		info = sh_msiof_spi_parse_dt(&pdev->dev);
+	} else {
+		chipdata = (const void *)pdev->id_entry->driver_data;
+		info = dev_get_platdata(&pdev->dev);
 	}
+
+	if (!info) {
+		dev_err(&pdev->dev, "failed to obtain device info\n");
+		return -ENXIO;
+	}
+
+	if (info->mode == MSIOF_SPI_SLAVE)
+		master = spi_alloc_slave(&pdev->dev,
+					 sizeof(struct sh_msiof_spi_priv));
+	else
+		master = spi_alloc_master(&pdev->dev,
+					  sizeof(struct sh_msiof_spi_priv));
+	if (master == NULL)
+		return -ENOMEM;
 
 	p = spi_master_get_devdata(master);
 
 	platform_set_drvdata(pdev, p);
 	p->master = master;
-
-	of_id = of_match_device(sh_msiof_match, &pdev->dev);
-	if (of_id) {
-		chipdata = of_id->data;
-		p->info = sh_msiof_spi_parse_dt(&pdev->dev);
-	} else {
-		chipdata = (const void *)pdev->id_entry->driver_data;
-		p->info = dev_get_platdata(&pdev->dev);
-	}
-
-	if (!p->info) {
-		dev_err(&pdev->dev, "failed to obtain device info\n");
-		ret = -ENXIO;
-		goto err1;
-	}
+	p->info = info;
 
 	attr = soc_device_match(rcar_quirks_match);
 	if (attr)
@@ -1462,6 +1440,7 @@ static int sh_msiof_spi_probe(struct platform_device *pdev)
 	master->num_chipselect = p->info->num_chipselect;
 	master->setup = sh_msiof_spi_setup;
 	master->prepare_message = sh_msiof_prepare_message;
+	master->slave_abort = sh_msiof_slave_abort;
 	master->bits_per_word_mask = SPI_BPW_RANGE_MASK(8, 32);
 	master->auto_runtime_pm = true;
 	master->transfer_one = sh_msiof_transfer_one;

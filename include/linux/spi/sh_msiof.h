@@ -2,8 +2,8 @@
 #define __SPI_SH_MSIOF_H__
 
 enum {
-	SPI_MSIOF_MASTER,
-	SPI_MSIOF_SLAVE,
+	MSIOF_SPI_MASTER,
+	MSIOF_SPI_SLAVE,
 };
 
 struct sh_msiof_spi_info {
