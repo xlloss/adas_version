@@ -10,7 +10,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-
+//#define DEBUG
 #include <linux/device.h>
 
 #include <media/v4l2-subdev.h>
@@ -357,6 +357,8 @@ static void wpf_configure(struct vsp1_entity *entity,
 		outfmt |= VI6_WPF_OUTFMT_CSC;
 
 	wpf->outfmt = outfmt;
+
+	dev_dbg(vsp1->dev, "wpf#%d: outfmt=%x (csc=%d)\n", wpf->entity.index, outfmt, !!(outfmt & VI6_WPF_OUTFMT_CSC));
 
 	vsp1_dl_list_write(dl, VI6_DPR_WPF_FPORCH(wpf->entity.index),
 			   VI6_DPR_WPF_FPORCH_FP_WPFN);

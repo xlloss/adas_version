@@ -10,7 +10,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-
+//#define DEBUG
 #include <linux/device.h>
 
 #include <media/v4l2-subdev.h>
@@ -253,8 +253,10 @@ static void rpf_configure(struct vsp1_entity *entity,
 	if (sink_format->code != source_format->code)
 		infmt |= VI6_RPF_INFMT_CSC;
 
+	dev_dbg(vsp1->dev, "rpf#%d: infmt=%x (csc=%d)\n", rpf->entity.index, infmt, !!(infmt & VI6_RPF_INFMT_CSC));
+
 	vsp1_rpf_write(rpf, dl, VI6_RPF_INFMT, infmt);
-	vsp1_rpf_write(rpf, dl, VI6_RPF_DSWAP, fmtinfo->swap);
+	vsp1_rpf_write(rpf, dl, VI6_RPF_DSWAP, fmtinfo->swap | 0xF00);
 
 	/* Output location */
 	if (pipe->bru) {
@@ -287,6 +289,15 @@ static void rpf_configure(struct vsp1_entity *entity,
 		vsp1_rpf_write(rpf, dl, VI6_RPF_LOC,
 		       (left << VI6_RPF_LOC_HCOORD_SHIFT) |
 		       (top << VI6_RPF_LOC_VCOORD_SHIFT));
+
+	// ...setup alpha-plane as required
+	if (rpf->mem.alpha) {
+		vsp1_rpf_write(rpf, dl, VI6_RPF_SRCM_ADDR_AI, rpf->mem.alpha);
+		vsp1_rpf_write(rpf, dl, VI6_RPF_ALPH_SEL, VI6_RPF_ALPH_SEL_ASEL_8B_PLANE);
+		vsp1_rpf_write(rpf, dl, VI6_RPF_SRCM_ASTRIDE, rpf->alpha_pitch);
+		dev_dbg(vsp1->dev, "rpf#%d: setup alpha-plane: buffer=%pad, stride=%u\n", rpf->entity.index, &rpf->mem.alpha, rpf->alpha_pitch);
+		goto out;
+	}
 
 	/* On Gen2 use the alpha channel (extended to 8 bits) when available or
 	 * a fixed alpha value set through the V4L2_CID_ALPHA_COMPONENT control
@@ -342,7 +353,9 @@ static void rpf_configure(struct vsp1_entity *entity,
 	if (entity->vsp1->info->gen == 3) {
 		u32 mult;
 
-		if ((fmtinfo->alpha) &&
+		dev_dbg(vsp1->dev, "rpf#%d: alpha=%x, fourcc=%x\n", rpf->entity.index, fmtinfo->alpha, fmtinfo->fourcc);
+
+		if (0 && (fmtinfo->alpha) &&
 			(fmtinfo->fourcc != V4L2_PIX_FMT_ARGB555)) {
 			/* When the input contains an alpha channel enable the
 			 * alpha multiplier. If the input is premultiplied we
@@ -371,9 +384,14 @@ static void rpf_configure(struct vsp1_entity *entity,
 		rpf->mult_alpha = mult;
 	}
 
+out:
 	vsp1_rpf_write(rpf, dl, VI6_RPF_MSK_CTRL, 0);
 	vsp1_rpf_write(rpf, dl, VI6_RPF_CKEY_CTRL, 0);
 
+	/* ...set up color keying */
+	vsp1_rpf_write(rpf, dl, VI6_RPF_CKEY_CTRL, rpf->ckey);
+	vsp1_rpf_write(rpf, dl, VI6_RPF_CKEY_SET0, rpf->ckey_set0);
+	vsp1_rpf_write(rpf, dl, VI6_RPF_CKEY_SET1, rpf->ckey_set1);
 }
 
 static const struct vsp1_entity_operations rpf_entity_ops = {

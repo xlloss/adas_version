@@ -272,6 +272,7 @@ void vsp1_dl_set_addr_auto_fld(struct vsp1_dl_list *dl, struct vsp1_rwpf *rpf)
 	u32 y_top_index, y_bot_index;
 	u32 u_top_index, u_bot_index;
 	u32 v_top_index, v_bot_index;
+	u32 alpha_index;
 	dma_addr_t y_top_addr, y_bot_addr;
 	dma_addr_t u_top_addr, u_bot_addr;
 	dma_addr_t v_top_addr, v_bot_addr;
@@ -287,6 +288,7 @@ void vsp1_dl_set_addr_auto_fld(struct vsp1_dl_list *dl, struct vsp1_rwpf *rpf)
 	u_bot_index = rpf->entity.index * 8 + 3;
 	v_top_index = rpf->entity.index * 8 + 4;
 	v_bot_index = rpf->entity.index * 8 + 5;
+	alpha_index = rpf->entity.index * 8 + 6;
 
 	switch (rpf->fmtinfo->fourcc) {
 	case V4L2_PIX_FMT_YUV420M:
@@ -359,6 +361,9 @@ void vsp1_dl_set_addr_auto_fld(struct vsp1_dl_list *dl, struct vsp1_rwpf *rpf)
 	dl->src_dst_addr[u_bot_index].addr = u_bot_addr;
 	dl->src_dst_addr[v_top_index].addr = v_top_addr;
 	dl->src_dst_addr[v_bot_index].addr = v_bot_addr;
+
+	/* ...set alpha-plane address as needed */
+	dl->src_dst_addr[alpha_index].addr = rpf->mem.alpha;
 }
 
 static struct vsp1_dl_list *vsp1_dl_list_alloc(struct vsp1_dl_manager *dlm)

@@ -10,7 +10,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
-
+//#define DEBUG
 #include <media/v4l2-subdev.h>
 
 #include "vsp1.h"

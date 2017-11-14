@@ -168,7 +168,7 @@ static void lif_configure(struct vsp1_entity *entity,
 
 	vsp1_lif_write(lif, dl, VI6_LIF_CTRL(lif->entity.index),
 			(obth << VI6_LIF_CTRL_OBTH_SHIFT) |
-			(format->code == 0 ? VI6_LIF_CTRL_CFMT : 0) |
+			(format->code != MEDIA_BUS_FMT_ARGB8888_1X32 ? VI6_LIF_CTRL_CFMT : 0) |
 			VI6_LIF_CTRL_REQSEL | VI6_LIF_CTRL_LIF_EN);
 
 	if (soc_device_match(r8a7797))
