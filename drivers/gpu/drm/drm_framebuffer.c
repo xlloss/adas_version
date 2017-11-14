@@ -192,6 +192,7 @@ static int format_check(const struct drm_mode_fb_cmd2 *r)
 	case DRM_FORMAT_YVU422:
 	case DRM_FORMAT_YUV444:
 	case DRM_FORMAT_YVU444:
+	case DRM_FORMAT_R8:
 		return 0;
 	default:
 		format_name = drm_get_format_name(r->pixel_format);
