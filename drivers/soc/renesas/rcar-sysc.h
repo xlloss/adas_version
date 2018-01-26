@@ -23,10 +23,15 @@
 #define PD_BUSY		BIT(3)	/* Busy, for internal use only */
 #define PD_ON_ONCE	BIT(4)  /* Turned on once at boot */
 
+#define PD_WA_CLK	BIT(5)  /* Use clocks for workaround */
+#define PD_WA_CLK_RDY	BIT(6)  /* Clock ready, for internal use only */
+#define PD_NO_INIT_ON	BIT(7)  /* Do not power on at initialization, for internal use */
+
 #define PD_CPU_CR	PD_CPU		  /* CPU area has CR (R-Car H1) */
 #define PD_CPU_NOCR	PD_CPU | PD_NO_CR /* CPU area lacks CR (R-Car Gen2/3) */
 #define PD_ALWAYS_ON	PD_NO_CR	  /* Always-on area */
 
+#define RCAR_SYSC_MAX_WA_CLKS	8
 
 /*
  * Description of a Power Area
@@ -39,6 +44,7 @@ struct rcar_sysc_area {
 	u8 isr_bit;		/* Bit in SYSCI*R */
 	int parent;		/* -1 if none */
 	unsigned int flags;	/* See PD_* */
+	const char* wa_clk_names[RCAR_SYSC_MAX_WA_CLKS];	/* Clocks needed by workaround for A3 PD issue */
 };
 
 

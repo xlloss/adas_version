@@ -30,7 +30,8 @@ static const struct rcar_sysc_area r8a7798_areas[] __initconst = {
 	  PD_CPU_NOCR },
 	{ "cr7",	0x240, 0, R8A7798_PD_CR7,	R8A7798_PD_ALWAYS_ON },
 
-	{ "a3ir",	0x180, 0, R8A7798_PD_A3IR,	R8A7798_PD_ALWAYS_ON },
+	{ "a3ir",	0x180, 0, R8A7798_PD_A3IR,	R8A7798_PD_ALWAYS_ON,
+	  PD_WA_CLK, {"impram"} },
 	{ "a2ir0",	0x400, 0, R8A7798_PD_A2IR0,	R8A7798_PD_A3IR },
 	{ "a2ir1",	0x400, 1, R8A7798_PD_A2IR1,	R8A7798_PD_A3IR },
 	{ "a2ir2",	0x400, 2, R8A7798_PD_A2IR2,	R8A7798_PD_A3IR },
@@ -46,9 +47,12 @@ static const struct rcar_sysc_area r8a7798_areas[] __initconst = {
 	{ "a2pd1",	0x400, 12, R8A7798_PD_A2PD1,	R8A7798_PD_A3IR },
 	{ "a2cn",	0x400, 13, R8A7798_PD_A2CN,	R8A7798_PD_A3IR },
 
-	{ "a3vip",	0x2c0, 0, R8A7798_PD_A3VIP,	R8A7798_PD_ALWAYS_ON },
-	{ "a3vip1",	0x300, 0, R8A7798_PD_A3VIP1,	R8A7798_PD_ALWAYS_ON },
-	{ "a3vip2",	0x280, 0, R8A7798_PD_A3VIP2,	R8A7798_PD_ALWAYS_ON },
+	{ "a3vip",	0x2c0, 0, R8A7798_PD_A3VIP,	R8A7798_PD_ALWAYS_ON,
+	  PD_WA_CLK, {"disp"} },
+	{ "a3vip1",	0x300, 0, R8A7798_PD_A3VIP1,	R8A7798_PD_ALWAYS_ON,
+	  PD_WA_CLK, {"umf", "smd_post", "smd_est", "smd_ps"} },
+	{ "a3vip2",	0x280, 0, R8A7798_PD_A3VIP2,	R8A7798_PD_ALWAYS_ON,
+	  PD_WA_CLK, {"cle0", "cle1", "cle2", "cle3", "cle4"} },
 };
 
 const struct rcar_sysc_info r8a7798_sysc_info __initconst = {

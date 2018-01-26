@@ -20,6 +20,8 @@
 #include <linux/syscore_ops.h>
 #include <linux/io.h>
 #include <linux/soc/renesas/rcar-sysc.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
 
 #include "rcar-sysc.h"
 
@@ -64,6 +66,7 @@ static DEFINE_SPINLOCK(rcar_sysc_lock); /* SMP CPUs + I/O devices */
 
 
 static const char *to_pd_name(const struct rcar_sysc_ch *sysc_ch);
+static int rcar_sysc_wa_clk(const struct rcar_sysc_ch *sysc_ch, int en);
 
 static int rcar_sysc_pwr_on_off(const struct rcar_sysc_ch *sysc_ch, bool on)
 {
@@ -110,6 +113,12 @@ static int rcar_sysc_power(const struct rcar_sysc_ch *sysc_ch, bool on)
 	int ret = 0;
 	int k;
 
+	ret = rcar_sysc_wa_clk(sysc_ch, 1);
+	if (ret) {
+		pr_err("%s: Failed to enable clock for workaround\n", to_pd_name(sysc_ch));
+		return ret;
+	}
+
 	spin_lock_irqsave(&rcar_sysc_lock, flags);
 
 	iowrite32(isr_mask, rcar_sysc_base + SYSCISCR);
@@ -148,6 +157,8 @@ static int rcar_sysc_power(const struct rcar_sysc_ch *sysc_ch, bool on)
  out:
 	spin_unlock_irqrestore(&rcar_sysc_lock, flags);
 
+	rcar_sysc_wa_clk(sysc_ch, 0);
+
 	pr_debug("sysc power %s domain %d: %08x -> %d\n", on ? "on" : "off",
 		 sysc_ch->isr_bit, ioread32(rcar_sysc_base + SYSCISR), ret);
 	return ret;
@@ -178,8 +189,34 @@ struct rcar_sysc_pd {
 	struct generic_pm_domain genpd;
 	struct rcar_sysc_ch ch;
 	unsigned int flags;
+	struct clk *wa_clk[RCAR_SYSC_MAX_WA_CLKS];
 	char name[0];
 };
+
+static int rcar_sysc_wa_clk(const struct rcar_sysc_ch *sysc_ch, int en)
+{
+	int i, ret;
+	struct rcar_sysc_pd *pd = container_of(sysc_ch, struct rcar_sysc_pd, ch);
+
+	if (pd->flags & PD_WA_CLK) {
+		if (!(pd->flags & PD_WA_CLK_RDY))
+			return -EBUSY;
+
+		for (i = 0; i < RCAR_SYSC_MAX_WA_CLKS; i++) {
+			if (!pd->wa_clk[i])
+				break;
+
+			if (en) {
+				ret = clk_enable(pd->wa_clk[i]);
+				if (ret)
+					return ret;
+			} else
+				clk_disable(pd->wa_clk[i]);
+		}
+	}
+
+	return 0;
+}
 
 static inline struct rcar_sysc_pd *to_rcar_pd(struct generic_pm_domain *d)
 {
@@ -231,6 +268,7 @@ static void __init rcar_sysc_pd_setup(struct rcar_sysc_pd *pd)
 	struct generic_pm_domain *genpd = &pd->genpd;
 	const char *name = pd->genpd.name;
 	struct dev_power_governor *gov = &simple_qos_governor;
+	bool is_off = false;
 
 	if (pd->flags & PD_CPU) {
 		/*
@@ -278,6 +316,12 @@ static void __init rcar_sysc_pd_setup(struct rcar_sysc_pd *pd)
 		goto finalize;
 	}
 
+	if (pd->flags & PD_NO_INIT_ON) {
+		is_off = rcar_sysc_power_is_off(&pd->ch);
+		pr_debug("%s: %s is initialy %s\n", __func__, genpd->name, is_off ? "off" : "on");
+		goto finalize;
+	}
+
 	if (!rcar_sysc_power_is_off(&pd->ch)) {
 		pr_debug("%s: %s is already powered\n", __func__, genpd->name);
 		goto finalize;
@@ -286,7 +330,7 @@ static void __init rcar_sysc_pd_setup(struct rcar_sysc_pd *pd)
 	rcar_sysc_power_up(&pd->ch);
 
 finalize:
-	pm_genpd_init(genpd, gov, false);
+	pm_genpd_init(genpd, gov, is_off);
 }
 
 static const struct of_device_id rcar_sysc_matches[] = {
@@ -442,6 +486,12 @@ static int __init rcar_sysc_pd_init(void)
 		pd->ch.isr_bit = area->isr_bit;
 		pd->flags = area->flags;
 
+		if ((pd->flags & PD_WA_CLK) ||
+			(area->parent >= 0 && (container_of(domains->domains[area->parent],
+			struct rcar_sysc_pd, genpd)->flags & PD_NO_INIT_ON))
+			)
+			pd->flags |= PD_NO_INIT_ON;
+
 		rcar_sysc_pd_setup(pd);
 		if (area->parent >= 0)
 			pm_genpd_add_subdomain(domains->domains[area->parent],
@@ -477,6 +527,62 @@ static int __init rcar_sysc_pd_init2(void)
 	return 0;
 }
 postcore_initcall(rcar_sysc_pd_init2);
+#endif
+
+#if IS_ENABLED(CONFIG_ARCH_R8A7797)  || \
+    IS_ENABLED(CONFIG_ARCH_R8A7798)
+static int __init rcar_sysc_pd_init3(void)
+{
+	const struct rcar_sysc_info *info;
+	const struct of_device_id *match;
+	struct device_node *np;
+	unsigned int i, j;
+
+	np = of_find_matching_node_and_match(NULL, rcar_sysc_matches, &match);
+	if (!np)
+		return -ENODEV;
+
+	info = match->data;
+
+	for (i = 0; i < info->num_areas; i++) {
+		const struct rcar_sysc_area *area = &info->areas[i];
+		struct rcar_sysc_pd *pd = rcar_domains[i];
+
+		if (pd->flags & PD_WA_CLK) {
+			int err = 0;
+
+			for (j = 0; j < RCAR_SYSC_MAX_WA_CLKS; j++) {
+				struct clk *wa_clk;
+				const char *wa_clk_name = area->wa_clk_names[j];
+
+				if (!wa_clk_name)
+					break;
+
+				wa_clk = __clk_lookup(wa_clk_name);
+				if (!wa_clk) {
+					err = -ENODEV;
+					pr_err("%s: Unable to get clock %s for workaround\n", pd->name, wa_clk_name);
+					break;
+				}
+
+				err = clk_prepare(wa_clk);
+				if (err) {
+					pr_err("%s: Unable to prepare clock %s for workaround\n", pd->name, wa_clk_name);
+					break;
+				}
+
+				pd->wa_clk[j] = wa_clk;
+			}
+
+			if (!err)
+				pd->flags |= PD_WA_CLK_RDY;
+		}
+	}
+
+	return 0;
+}
+/* Should be called after cpg_mssr_driver is initialized */
+subsys_initcall_sync(rcar_sysc_pd_init3);
 #endif
 
 void __init rcar_sysc_init(phys_addr_t base, u32 syscier)
