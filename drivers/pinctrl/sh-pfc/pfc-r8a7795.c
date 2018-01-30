@@ -5066,7 +5066,7 @@ static const char * const ssi_groups[] = {
 	"ssi2_ctrl_a",
 	"ssi2_ctrl_b",
 	"ssi3_data",
-	"ssi34_ctrl",
+	"ssi349_ctrl",
 	"ssi4_data",
 	"ssi4_ctrl",
 	"ssi5_data",
