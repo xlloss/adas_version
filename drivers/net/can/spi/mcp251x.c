@@ -71,6 +71,7 @@
 #include <linux/netdevice.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
@@ -270,6 +271,7 @@ struct mcp251x_priv {
 	struct regulator *power;
 	struct regulator *transceiver;
 	struct clk *clk;
+	struct gpio_desc *rst;
 };
 
 #define MCP251X_IS(_model) \
@@ -1031,8 +1033,20 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	struct mcp251x_platform_data *pdata = dev_get_platdata(&spi->dev);
 	struct net_device *net;
 	struct mcp251x_priv *priv;
+	struct gpio_desc *reset_gpio;
 	struct clk *clk;
 	int freq, ret;
+
+	reset_gpio = devm_gpiod_get(&spi->dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(reset_gpio)) {
+		if (PTR_ERR(reset_gpio) == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+		dev_err(&spi->dev, "cannot get reset-gpios %ld\n",
+			PTR_ERR(reset_gpio));
+		reset_gpio = NULL;
+	} else {
+		gpiod_set_value_cansleep(reset_gpio, 1);
+	}
 
 	clk = devm_clk_get(&spi->dev, NULL);
 	if (IS_ERR(clk)) {
@@ -1074,6 +1088,7 @@ static int mcp251x_can_probe(struct spi_device *spi)
 		priv->model = spi_get_device_id(spi)->driver_data;
 	priv->net = net;
 	priv->clk = clk;
+	priv->rst = reset_gpio;
 
 	spi_set_drvdata(spi, priv);
 
@@ -1184,6 +1199,8 @@ static int mcp251x_can_remove(struct spi_device *spi)
 	unregister_candev(net);
 
 	mcp251x_power_enable(priv->power, 0);
+
+	gpiod_set_value_cansleep(priv->rst, 0);
 
 	if (!IS_ERR(priv->clk))
 		clk_disable_unprepare(priv->clk);
