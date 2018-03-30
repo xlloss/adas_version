@@ -240,7 +240,6 @@ static int rsnd_ssi_master_clk_start(struct rsnd_mod *mod,
 	struct rsnd_dai *rdai = rsnd_io_to_rdai(io);
 	struct rsnd_ssi *ssi = rsnd_mod_to_ssi(mod);
 	struct rsnd_mod *ssi_parent_mod = rsnd_io_to_mod_ssip(io);
-	int chan = rsnd_runtime_channel_for_ssi(io);
 	int idx, ret;
 	unsigned int main_rate;
 	unsigned int rate = rsnd_io_is_play(io) ?
@@ -265,9 +264,10 @@ static int rsnd_ssi_master_clk_start(struct rsnd_mod *mod,
 		return 0;
 	}
 
-	main_rate = rsnd_ssi_clk_query(priv, rate, chan, &idx);
+	main_rate = rsnd_ssi_clk_query(priv, rate, ssi->chan, &idx);
 	if (!main_rate) {
-		dev_err(dev, "unsupported clock rate\n");
+		dev_err(dev, "unsupported clock rate: %dx%d\n",
+			rate, ssi->chan);
 		return -EIO;
 	}
 

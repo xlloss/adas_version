@@ -630,6 +630,14 @@ static int rsnd_soc_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	int ret;
 	unsigned long flags;
 
+	/*
+	 * hw_refine finished. remove hw_param from rdai
+	 * see
+	 *	__rsnd_soc_hw_rule_rate()
+	 *	__rsnd_soc_hw_rule_channels()
+	 */
+	io->hw_params = NULL;
+
 	spin_lock_irqsave(&priv->lock, flags);
 
 	switch (cmd) {
