@@ -436,13 +436,15 @@ static int tp2854sub_parse_dt(struct i2c_client *client)
 
 static void tp2854sub_video_mode(struct tp2854sub_priv *priv)
 {
+  pr_err("%s video_mode %d\r\n", __func__, priv->video_mode);
   switch (priv->video_mode) {
         case NPXL_720P_60:
+            pr_err("%s USE NPXL_720P_60\r\n", __func__);
             priv->rect.left = 0;
             priv->rect.top = 0;
             priv->rect.width = 1280;
             priv->rect.height = 720;
-            priv->fps_denominator = 30;
+            priv->fps_denominator = 60;
             break;
 
         case NPXL_720P_50:
@@ -480,6 +482,7 @@ static void tp2854sub_video_mode(struct tp2854sub_priv *priv)
             break;
 
         case NPXL_1080P_25:
+            pr_err("%s USE NPXL_1080P_25\r\n", __func__);
             priv->rect.left = 0;
             priv->rect.top = 0;
             priv->rect.width = 1920;
