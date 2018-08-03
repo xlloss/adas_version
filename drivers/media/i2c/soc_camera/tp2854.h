@@ -15,11 +15,22 @@
 #define TP2854_ID_2 0x54
 
 /* MIPI PAGE = 0 */
+#define TP2854_TVP_CLK_74M 0
+#define TP2854_TVP_CLK_148M 1
+
 #define TP2854_PAGE 0x40
 #define MIPI_PAGE_ENABLE 0x0C
 #define MIPI_PAGE_DISABLE 0x04
 
 #define TP2854_DECODE_CTRL 0x02
+#define TP2854_EQ1_HYSTER 0x0C
+#define EQ_CLK_FSEL (1 << 4)
+#define EQ_CLK_148M 0
+#define EQ_CLK_74M 1
+
+#define TP2854_DECODE_STATUS 0x02
+
+
 #define TP2854_NPXL_H 0x1C
 #define TP2854_NPXL_L 0x1D
 #define TP2854_CLK_DATA_OUT 0x4E
@@ -33,7 +44,10 @@
 #define TP2854_OUT_V_DELAY_L 0x18
 #define TP2854_OUT_V_ACTIVE_L 0x19
 #define TP2854_OUT_V_H_ACTIVE_H 0x1A
-
+#define TP2854_MISC_CTL 0x35
+#define FSL_74MHZ_148MHZ_SYS_CLK (1 << 5)
+#define FSL_74MHZ 1
+#define FSL_148MHZ 0
 
 /* MIPI PAGE = 1 */
 #define TP2854_MIPI_CLK_LAEN_CTRL 0x01
@@ -43,6 +57,12 @@
 #define TP2854_MIPI_OUTPUT_EN 0x08
 #define ENABLE_ALL_LANES 0x0F
 #define DISABLE_ALL_LANES 0x00
+
+
+#define TP2854_MIPI_PLL_CTRL4 0x13
+#define OUT_DIV_EN (1 << 5)
+#define OUT_VCO_OUT 0
+#define OUT_DIVOUT_XIN 1
 
 #define TP2854_MIPI_PLL_CTRL5 0x14
 #define DIV_CLK_PIX_1 0 << 6

@@ -114,9 +114,9 @@ static int tp2854_g_mbus_config(struct v4l2_subdev *sd,
 
 static int tp2854_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
+//	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-	//dev_info(&client->dev,  "tp2854_s_stream\n");
+//	dev_info(&client->dev,  "tp2854_s_stream\n");
 	return 0;
 }
 
@@ -125,7 +125,7 @@ static int tp2854_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parms)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct v4l2_captureparm *cp = &parms->parm.capture;
 
-	//dev_info(&client->dev,  "tp2854_s_parm\n");
+	dev_info(&client->dev,  "tp2854_s_parm\n");
 
     //if not video capture , return error
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -171,7 +171,7 @@ static int tp2854sub_get_fmt(struct v4l2_subdev *sd,
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
     struct tp2854sub_priv *priv = i2c_get_clientdata(client);
 
-//	dev_info(&client->dev,  "tp2854sub_get_fmt\n");
+	dev_info(&client->dev,  "tp2854sub_get_fmt\n");
 
 	if (format->pad)
 		return -EINVAL;
@@ -192,7 +192,7 @@ static int tp2854sub_set_fmt(struct v4l2_subdev *sd,
 	struct v4l2_mbus_framefmt *mf = &format->format;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
-//	dev_info(&client->dev, "tp2854sub_set_fmt\n");
+	dev_info(&client->dev, "tp2854sub_set_fmt\n");
 
 	mf->code = MEDIA_BUS_FMT_YUYV8_2X8;
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
@@ -278,14 +278,14 @@ static int tp2854sub_set_selection(struct v4l2_subdev *sd,
 	priv->crop_rect.width = rect->width;
 	priv->crop_rect.height = rect->height;
 
-	return 0;
+    return 0;
 }
 
 
 static int tp2854sub_enum_mbus_code(struct v4l2_subdev *sd,
     struct v4l2_subdev_pad_config *cfg, struct v4l2_subdev_mbus_code_enum *code)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
+//	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	if (code->pad || code->index > 0)
 		return -EINVAL;
 
@@ -428,10 +428,11 @@ static int tp2854sub_parse_dt(struct i2c_client *client)
 
             if (!of_property_read_u32(np_endpoint, "npxl", &nxpl)) {
                 priv->video_mode = nxpl;
-                return;
+                return 0;
             }
         }
     }
+    return 0;
 }
 
 static void tp2854sub_video_mode(struct tp2854sub_priv *priv)

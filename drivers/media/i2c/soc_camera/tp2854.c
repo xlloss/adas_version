@@ -36,6 +36,7 @@ struct tp2854_priv {
 	int hsync;
 	int vsync;
     int nxpl;
+    int tvi_clk;
 	atomic_t use_count;
 	struct i2c_client*client;
 };
@@ -84,10 +85,8 @@ int tp2854_hardware_init(struct i2c_client *client)
 
 	dev_info(&client->dev,"tp2854_hardware_init\n");
 
-
     /* disable MIPI register access */
 	tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_DISABLE);
-
 
      /* This seems to need Y first */
      /*  tp2854_write_reg(client ,0x02, 0xc2); */
@@ -98,8 +97,15 @@ int tp2854_hardware_init(struct i2c_client *client)
             priv->hsync = 1280;
             priv->vsync = 720;
 
-            tp2854_write_reg(client ,TP2854_NPXL_H, 0x06);
-            tp2854_write_reg(client ,TP2854_NPXL_L, 0x72);
+            if (priv->tvi_clk == TP2854_TVP_CLK_148M) {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x0C);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0xE4);
+
+            } else {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x06);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0x72);
+            }
+
             tp2854_write_reg(client ,TP2854_OUT_H_DELAY_H, 0x13);
             tp2854_write_reg(client ,TP2854_OUT_H_DELAY_L, 0x15);
             tp2854_write_reg(client ,TP2854_OUT_V_DELAY_L, 0x19);
@@ -114,8 +120,17 @@ int tp2854_hardware_init(struct i2c_client *client)
             pr_err("%s USE NPXL_720P_30\r\n", __func__);
             priv->hsync = 1280;
             priv->vsync = 720;
-            tp2854_write_reg(client ,TP2854_NPXL_H, 0x06);
-            tp2854_write_reg(client ,TP2854_NPXL_L, 0x72);
+
+            if (priv->tvi_clk == TP2854_TVP_CLK_148M) {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x0C);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0xE4);
+
+            } else {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x06);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0x72);
+            }
+
+
             tp2854_write_reg(client ,TP2854_OUT_H_DELAY_H, 0x13);
             tp2854_write_reg(client ,TP2854_OUT_H_DELAY_L, 0x15);
             tp2854_write_reg(client ,TP2854_OUT_V_DELAY_L, 0x19);
@@ -152,6 +167,10 @@ int tp2854_hardware_init(struct i2c_client *client)
         break;
     };
 
+    if (priv->tvi_clk == TP2854_TVP_CLK_74M)
+        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x35 | FSL_74MHZ_148MHZ_SYS_CLK);
+    else
+        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x35 & ~FSL_74MHZ_148MHZ_SYS_CLK);
 
     if (priv->vsync == 720) {
         /* 8bitYUV Y first, BT656 720p HD mode */
@@ -179,8 +198,18 @@ int tp2854_hardware_init(struct i2c_client *client)
 	tp2854_write_reg(client ,TP2854_SYS_CLK_CTRL, 0xf0);
 	tp2854_write_reg(client ,TP2854_COL_H_PLL_FR_CTL, 0x34);
 
+    if (priv->tvi_clk == TP2854_TVP_CLK_148M)
+        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x43 & ~EQ_CLK_FSEL);
+    else
+        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x43 | EQ_CLK_FSEL);
+
     /* enable MIPI register access */
 	tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_ENABLE);
+
+    if (priv->tvi_clk == TP2854_TVP_CLK_148M)
+        tp2854_write_reg(client ,TP2854_MIPI_PLL_CTRL4, 0x24 & ~OUT_DIV_EN);
+    else
+        tp2854_write_reg(client ,TP2854_MIPI_PLL_CTRL4, 0x24 | OUT_DIV_EN);
 
 	tp2854_write_reg(client ,TP2854_MIPI_CLK_LAEN_CTRL, 0xf8);
 
@@ -237,9 +266,11 @@ static int tp2854_s_register(struct v4l2_subdev *sd,
 
 static int tp2854_s_power(struct v4l2_subdev *sd, int on)
 {
-	struct tp2854_priv *priv = v4l2_get_subdevdata(sd);
-	/* struct i2c_client *client = priv->client; */
-	/* dev_info(&client->dev,  "tp2854_s_power %d\n", on); */
+	/* 
+    struct tp2854_priv *priv = v4l2_get_subdevdata(sd);
+    struct i2c_client *client = priv->client;
+	dev_info(&client->dev,  "tp2854_s_power %d\n", on);
+    */
 
 	return 0;
 }
@@ -267,10 +298,6 @@ static int tp2854_parse_dt(struct i2c_client *client)
 	struct tp2854_priv *priv = i2c_get_clientdata(client);
 	struct device_node *np = client->dev.of_node;
     //struct device *dev = &client->dev;
-    
-
-	//struct property *prop;
-	int err;
 	u8 val = 0;
 
     /* read TP2854_ID_1 */
@@ -295,6 +322,9 @@ static int tp2854_parse_dt(struct i2c_client *client)
 
 	if (of_property_read_u32(np, "lanes", &priv->lanes))
 		priv->lanes = 4;
+
+	if (of_property_read_u32(np, "tvi-clk", &priv->tvi_clk))
+		priv->tvi_clk = TP2854_TVP_CLK_74M;
 
     /*
 	if (of_property_read_u32(np, "techpoint,hsync", &priv->hsync))
