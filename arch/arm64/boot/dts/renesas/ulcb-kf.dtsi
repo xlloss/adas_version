@@ -760,73 +760,73 @@
 			reg = <1>;
 			/* Slot A (CN10) */
 
-			tp2864_sub_cam@0 {
-				compatible = "tp,tp2864_sub_cam";
+			tp2854_sub_cam@0 {
+				compatible = "tp,tp2854_sub_cam";
 				reg = <0x40>;
 
 				port@0 {
-					tp2864_sub_cam_in0: endpoint {
+					tp2854_sub_cam_in0: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin0ep0>;
 					};
 				};
 				port@1 {
-					tp2864_sub_cam_tp2864_des0ep0: endpoint@0 {
+					tp2854_sub_cam_tp2854_des0ep0: endpoint@0 {
 						remote-endpoint = <&tp2854_des0ep0>;
 					};
 				};
 			};
 
-			tp2864_sub_cam@1 {
-				compatible = "tp,tp2864_sub_cam";
+			tp2854_sub_cam@1 {
+				compatible = "tp,tp2854_sub_cam";
 				reg = <0x41>;
 
 				port@0 {
-					tp2864_sub_cam_in1: endpoint {
+					tp2854_sub_cam_in1: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin1ep0>;
 					};
 				};
 				port@1 {
-					tp2864_sub_cam_tp2864_des0ep1: endpoint@0 {
+					tp2854_sub_cam_tp2854_des0ep1: endpoint@0 {
 						remote-endpoint = <&tp2854_des0ep1>;
 					};
 				};
 			};
 
-			tp2864_sub_cam@2 {
-				compatible = "tp,tp2864_sub_cam";
+			tp2854_sub_cam@2 {
+				compatible = "tp,tp2854_sub_cam";
 				reg = <0x42>;
 
 				port@0 {
-					tp2864_sub_cam_in2: endpoint {
+					tp2854_sub_cam_in2: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin2ep0>;
 					};
 				};
 				port@1 {
-					tp2864_sub_cam_tp2864_des0ep2: endpoint@0 {
+					tp2854_sub_cam_tp2854_des0ep2: endpoint@0 {
 						remote-endpoint = <&tp2854_des0ep2>;
 					};
 				};
 			};
 
-			tp2864_sub_cam@3 {
-				compatible = "tp,tp2864_sub_cam";
+			tp2854_sub_cam@3 {
+				compatible = "tp,tp2854_sub_cam";
 				reg = <0x43>;
 
 				port@0 {
-					tp2864_sub_cam_in3: endpoint {
+					tp2854_sub_cam_in3: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2 3 4>;
 						remote-endpoint = <&vin3ep0>;
 					};
 				};
 				port@1 {
-					tp2864_sub_cam_tp2864_des0ep3: endpoint@0 {
+					tp2854_sub_cam_tp2854_des0ep3: endpoint@0 {
 						remote-endpoint = <&tp2854_des0ep3>;
 					};
 				};
@@ -1011,7 +1011,7 @@
 				compatible = "techpoint,tp2854";
 				reg = <0x44>;
 				lanes = <4>;
-                npxl = <0>;
+                npxl = <2>;
                 /*******************************
                  *  MODE                Value
                  *  720P  60 frame      npxl = 0
@@ -1025,7 +1025,7 @@
                  *  
                  ********************************/
 
-                tvi-clk = <1>;
+                tvi-clk = <0>;
                 /*******************************
                  * MODE
                  * 0 : 74.25 M Hz
@@ -1034,16 +1034,16 @@
 
 				port@0 {
 					tp2854_des0ep0: endpoint@0 {
-						remote-endpoint = <&tp2864_sub_cam_in0>;
+						remote-endpoint = <&tp2854_sub_cam_in0>;
 					};
 					tp2854_des0ep1: endpoint@1 {
-						remote-endpoint = <&tp2864_sub_cam_in1>;
+						remote-endpoint = <&tp2854_sub_cam_in1>;
 					};
 					tp2854_des0ep2: endpoint@2 {
-						remote-endpoint = <&tp2864_sub_cam_in2>;
+						remote-endpoint = <&tp2854_sub_cam_in2>;
 					};
 					tp2854_des0ep3: endpoint@3 {
-						remote-endpoint = <&tp2864_sub_cam_in3>;
+						remote-endpoint = <&tp2854_sub_cam_in3>;
 					};
 				};
 				port@1 {
@@ -1243,7 +1243,7 @@
 				virtual,channel = <0>;
 				data-lanes = <1 2 3 4>;
 //				remote-endpoint = <&ov106xx_in0>;
-                remote-endpoint = <&tp2864_sub_cam_in0>;
+                remote-endpoint = <&tp2854_sub_cam_in0>;
 			};
 		};
 		port@1 {
@@ -1278,7 +1278,7 @@
 				virtual,channel = <1>;
 				data-lanes = <1 2 3 4>;
 //				remote-endpoint = <&ov106xx_in1>;
-                remote-endpoint = <&tp2864_sub_cam_in1>;
+                remote-endpoint = <&tp2854_sub_cam_in1>;
 			};
 		};
 		port@1 {
@@ -1313,7 +1313,7 @@
 				virtual,channel = <2>;
 				data-lanes = <1 2 3 4>;
 //				remote-endpoint = <&ov106xx_in2>;
-                remote-endpoint = <&tp2864_sub_cam_in2>;
+                remote-endpoint = <&tp2854_sub_cam_in2>;
 			};
 		};
 		port@1 {
@@ -1348,7 +1348,7 @@
 				virtual,channel = <3>;
 				data-lanes = <1 2 3 4>;
 //				remote-endpoint = <&ov106xx_in3>;
-                remote-endpoint = <&tp2864_sub_cam_in3>;
+                remote-endpoint = <&tp2854_sub_cam_in3>;
 			};
 		};
 		port@1 {
