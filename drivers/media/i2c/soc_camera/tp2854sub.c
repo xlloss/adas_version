@@ -567,24 +567,24 @@ static int tp2854sub_remove(struct i2c_client *client)
 }
 
 
-MODULE_DEVICE_TABLE(i2c, tp2854sub_id);
-
-static const struct of_device_id tp2854sub_of_ids[] = {
-	{ .compatible = "tp,tp2864_sub_cam", },
-	{ }
-};
-
-static struct i2c_driver tp2854sub_i2c_driver = {
-	.driver	= {
-		.name		= "tp2854sub",
-		.of_match_table	= tp2854sub_of_ids,
-	},
-	.probe		= tp2854sub_probe,
-	.remove		= tp2854sub_remove,
-	.id_table	= tp2854sub_id,
-};
-
-module_i2c_driver(tp2854sub_i2c_driver);
+//MODULE_DEVICE_TABLE(i2c, tp2854sub_id);
+//
+//static const struct of_device_id tp2854sub_of_ids[] = {
+//	{ .compatible = "tp,tp2864_sub_cam", },
+//	{ }
+//};
+//
+//static struct i2c_driver tp2854sub_i2c_driver = {
+//	.driver	= {
+//		.name		= "tp2854sub",
+//		.of_match_table	= tp2854sub_of_ids,
+//	},
+//	.probe		= tp2854sub_probe,
+//	.remove		= tp2854sub_remove,
+//	.id_table	= tp2854sub_id,
+//};
+//
+//module_i2c_driver(tp2854sub_i2c_driver);
 
 MODULE_DESCRIPTION("TP2854 SUB_CAM Driver");
 MODULE_AUTHOR("FuckMe");

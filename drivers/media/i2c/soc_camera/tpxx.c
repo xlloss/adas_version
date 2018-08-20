@@ -7,6 +7,8 @@
  */
 
 #include "tp2854sub.c"
+#include <linux/fs.h> 
+#include <linux/i2c.h>
 
 static enum {
 	ID_TP2854,
@@ -15,14 +17,14 @@ static enum {
 static int tpxx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *did)
 {
-	int ret;
-	chip_id = -EINVAL;
+    int ret;
+    chip_id = -EINVAL;
 
     ret = tp2854sub_probe(client, did);
-	if (!ret) {
-		chip_id = ID_TP2854;
-		goto out;
-	}
+    if (!ret) {
+        chip_id = ID_TP2854;
+        goto out;
+    }
 
 	v4l_err(client, "failed to probe @ 0x%02x (%s)\n",
 			client->addr, client->adapter->name);
@@ -32,12 +34,12 @@ out:
 
 static int tpxx_remove(struct i2c_client *client)
 {
-	switch (chip_id) {
+    switch (chip_id) {
 
     case ID_TP2854:
         tp2854sub_remove(client);
         break;
-	};
+    };
 
 	return 0;
 }
