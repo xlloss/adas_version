@@ -1242,8 +1242,8 @@
 				csi,select = "csi40";
 				virtual,channel = <0>;
 				data-lanes = <1 2 3 4>;
-//				remote-endpoint = <&ov106xx_in0>;
-                remote-endpoint = <&tp2854_sub_cam_in0>;
+				remote-endpoint = <&ov106xx_in0>;
+//                remote-endpoint = <&tp2854_sub_cam_in0>;
 			};
 		};
 		port@1 {
@@ -1277,8 +1277,8 @@
 				csi,select = "csi40";
 				virtual,channel = <1>;
 				data-lanes = <1 2 3 4>;
-//				remote-endpoint = <&ov106xx_in1>;
-                remote-endpoint = <&tp2854_sub_cam_in1>;
+				remote-endpoint = <&ov106xx_in1>;
+//                remote-endpoint = <&tp2854_sub_cam_in1>;
 			};
 		};
 		port@1 {
@@ -1312,8 +1312,8 @@
 				csi,select = "csi40";
 				virtual,channel = <2>;
 				data-lanes = <1 2 3 4>;
-//				remote-endpoint = <&ov106xx_in2>;
-                remote-endpoint = <&tp2854_sub_cam_in2>;
+				remote-endpoint = <&ov106xx_in2>;
+//                remote-endpoint = <&tp2854_sub_cam_in2>;
 			};
 		};
 		port@1 {
@@ -1347,8 +1347,8 @@
 				csi,select = "csi40";
 				virtual,channel = <3>;
 				data-lanes = <1 2 3 4>;
-//				remote-endpoint = <&ov106xx_in3>;
-                remote-endpoint = <&tp2854_sub_cam_in3>;
+				remote-endpoint = <&ov106xx_in3>;
+//                remote-endpoint = <&tp2854_sub_cam_in3>;
 			};
 		};
 		port@1 {
