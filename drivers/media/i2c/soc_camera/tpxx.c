@@ -45,20 +45,20 @@ static int tpxx_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id tpxx_id[] = {
-	{ "tp2864_sub_cam", 0 },
+	{ "tp2854_sub_cam", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, tpxx_id);
 
 static const struct of_device_id tpxx_of_ids[] = {
-	{ .compatible = "tp,tp2864_sub_cam", },
+	{ .compatible = "tp,tp2854_sub_cam", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tpxx_of_ids);
 
 static struct i2c_driver tpxx_i2c_driver = {
 	.driver	= {
-		.name		= "tp2864_sub_cam",
+		.name		= "tp2854_sub_cam",
 		.of_match_table	= tpxx_of_ids,
 	},
 	.probe		= tpxx_probe,
