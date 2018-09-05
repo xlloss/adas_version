@@ -167,10 +167,10 @@ int tp2854_hardware_init(struct i2c_client *client)
         break;
     };
 
-    if (priv->tvi_clk == TP2854_TVP_CLK_74M)
-        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x35 | FSL_74MHZ_148MHZ_SYS_CLK);
+    if (priv->tvi_clk == TP2854_TVP_CLK_148M)
+        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x05 & ~FSL_74MHZ_148MHZ_SYS_CLK);
     else
-        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x35 & ~FSL_74MHZ_148MHZ_SYS_CLK);
+        tp2854_write_reg(client ,TP2854_MISC_CTL, 0x05 | FSL_74MHZ_148MHZ_SYS_CLK);
 
     if (priv->vsync == 720) {
         /* 8bitYUV Y first, BT656 720p HD mode */
