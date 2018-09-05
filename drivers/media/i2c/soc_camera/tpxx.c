@@ -19,7 +19,7 @@ static int tpxx_probe(struct i2c_client *client,
 {
     int ret;
     chip_id = -EINVAL;
-
+    dev_info(&client->dev, "%s ver 1.1\n", __func__);
     ret = tp2854sub_probe(client, did);
     if (!ret) {
         chip_id = ID_TP2854;

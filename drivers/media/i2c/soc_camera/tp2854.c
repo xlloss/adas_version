@@ -348,7 +348,7 @@ static int tp2854_probe(struct i2c_client *client,
 	struct tp2854_priv *priv;
 	int err, i;
 
-	dev_info(&client->dev,  "%s\n", __func__);
+	dev_info(&client->dev, "%s ver 1.1\n", __func__);
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;

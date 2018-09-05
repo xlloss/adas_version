@@ -509,8 +509,7 @@ static int tp2854sub_probe(struct i2c_client *client,
     struct tp2854sub_priv *priv;
 	int ret;
 
-	dev_info(&client->dev, "tp2854sub_probe \n");
-
+	dev_info(&client->dev, "tp2854sub_probe ver 1.1\n");
 	//check if tp2854 exist
 	if (tp2854sub_check_deviceId(client) < 0)
 		return 0;
