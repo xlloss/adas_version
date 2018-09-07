@@ -41,6 +41,19 @@ struct tp2854_priv {
 	struct i2c_client*client;
 };
 
+/*
+enum {
+    TP2854_720P_60FPS = 0,
+    TP2854_720P_50FPS,
+    TP2854_720P_30FPS,
+    TP2854_720P_25FPS,
+    TP2854_1080P_30FPS,
+    TP2854_1080P_25FPS,
+    TP2854_480I,
+    TP2854_576I,
+};
+*/
+
 struct i2c_client g_client ;
 
 static int tp2854_read_reg(struct i2c_client *client ,
@@ -158,6 +171,21 @@ int tp2854_hardware_init(struct i2c_client *client)
             break;
 
         case NPXL_480I:
+            pr_err("%s USE NPXL_480I\r\n", __func__);
+            priv->hsync = 1920;
+            priv->vsync = 240;
+
+            if (priv->tvi_clk == TP2854_TVP_CLK_148M) {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x23);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0x60);
+            } else {
+                tp2854_write_reg(client ,TP2854_NPXL_H, 0x09);
+                tp2854_write_reg(client ,TP2854_NPXL_L, 0x38);
+            }
+            tp2854_write_reg(client ,TP2854_OUT_H_DELAY_H, 0x13);
+            tp2854_write_reg(client ,TP2854_OUT_H_DELAY_L, 0x60);
+            tp2854_write_reg(client ,TP2854_OUT_H_ACTIVE_L, 0x80);
+            tp2854_write_reg(client ,TP2854_OUT_V_DELAY_L, 0x12);
             break;
 
         case NPXL_576I:
@@ -172,19 +200,33 @@ int tp2854_hardware_init(struct i2c_client *client)
     else
         tp2854_write_reg(client ,TP2854_MISC_CTL, 0x05 | FSL_74MHZ_148MHZ_SYS_CLK);
 
-    if (priv->vsync == 720) {
-        /* 8bitYUV Y first, BT656 720p HD mode */
-        tp2854_write_reg(client ,TP2854_DECODE_CTRL, 0xc2);
-        tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_ENABLE);
-        tp2854_write_reg(client ,0x13, 0x24);
-        tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_DISABLE);
-    } else if (priv->vsync == 1080) {
-        tp2854_write_reg(client ,TP2854_DECODE_CTRL, 0xc0);
-        tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_ENABLE);
-        tp2854_write_reg(client ,0x13, 0x04);
-        tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_DISABLE);
-    } else {
-        pr_err("Don't know what format ? priv->vsync %d\r\n", priv->vsync);
+
+    switch (priv->vsync) {
+        case 720:
+            /* 8bitYUV Y first, BT656 720p HD mode */
+            tp2854_write_reg(client ,TP2854_DECODE_CTRL, 0xc2);
+            break;
+        case 1080:
+            tp2854_write_reg(client ,TP2854_DECODE_CTRL, 0xc0);
+            break;
+        case 240:
+            tp2854_write_reg(client ,TP2854_DECODE_CTRL, 0xc7);
+            tp2854_write_reg(client ,TP2854_PCLAMP_CTRL, 0x40);
+            tp2854_write_reg(client ,TP2854_ClAMP_GAIN_CTRL, 0x84);
+            tp2854_write_reg(client ,TP2854_SYNC_AMPACG_CTRL, 0x36);
+            tp2854_write_reg(client ,TP2854_COLOR_KILL_TH, 0x70);
+            tp2854_write_reg(client ,TP2854_COLOR_PLL, 0x2a);
+            tp2854_write_reg(client ,TP2854_COLOR_BURST_GAIN, 0x68);
+            tp2854_write_reg(client ,TP2854_COLOR_GAIN_REF, 0x57);
+            tp2854_write_reg(client ,TP2854_COLOR_CARR_DDS_BFSTD_4, 0x62);
+            tp2854_write_reg(client ,TP2854_COLOR_CARR_DDS_BFSTD_3, 0xbb);
+            tp2854_write_reg(client ,TP2854_COLOR_CARR_DDS_BFSTD_2, 0x96);
+            tp2854_write_reg(client ,TP2854_COLOR_CARR_DDS, 0xc0);
+            tp2854_write_reg(client ,TP2854_LPF_CTRL, 0x04);
+            break;
+        default:
+            pr_err("Don't know what format ? priv->vsync %d\r\n", priv->vsync);
+            break;
     }
 
     tp2854_write_reg(client ,TP2854_OUT_H_ACTIVE_L, priv->hsync & 0xFF); 
@@ -199,9 +241,9 @@ int tp2854_hardware_init(struct i2c_client *client)
 	tp2854_write_reg(client ,TP2854_COL_H_PLL_FR_CTL, 0x34);
 
     if (priv->tvi_clk == TP2854_TVP_CLK_148M)
-        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x43 & ~EQ_CLK_FSEL);
+        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x13 & ~EQ_CLK_FSEL);
     else
-        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x43 | EQ_CLK_FSEL);
+        tp2854_write_reg(client ,TP2854_EQ1_HYSTER, 0x13 | EQ_CLK_FSEL);
 
     /* enable MIPI register access */
 	tp2854_write_reg(client ,TP2854_PAGE, MIPI_PAGE_ENABLE);

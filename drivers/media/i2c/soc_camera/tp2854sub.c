@@ -180,7 +180,10 @@ static int tp2854sub_get_fmt(struct v4l2_subdev *sd,
 	mf->height = priv->rect.height;
 	mf->code = MEDIA_BUS_FMT_YUYV8_2X8; 
 	mf->colorspace = V4L2_COLORSPACE_SMPTE170M;
-	mf->field = V4L2_FIELD_NONE; //Progressive mode
+    if (priv->video_mode == NPXL_480I || priv->video_mode == NPXL_576I)
+        mf->field = V4L2_FIELD_INTERLACED; /* interlaced mode */
+    else
+        mf->field = V4L2_FIELD_NONE; /* Progressive mode */
 
 	return 0;
 }
@@ -492,6 +495,12 @@ static void tp2854sub_video_mode(struct tp2854sub_priv *priv)
             break;
 
         case NPXL_480I:
+            pr_err("%s USE NPXL_480I\r\n", __func__);
+            priv->rect.left = 0;
+            priv->rect.top = 0;
+            priv->rect.width = 1920;
+            priv->rect.height = 240;
+            priv->fps_denominator = 50;
             break;
 
         case NPXL_576I:
