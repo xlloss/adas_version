@@ -38,6 +38,8 @@ struct tp2854sub_priv {
 	u8 id[6];
 };
 
+static unsigned char tp2854_id_check = 0;
+
 static inline struct tp2854sub_priv *to_tp2854(const struct i2c_client *client)
 {
 	return container_of(i2c_get_clientdata(client), struct tp2854sub_priv, sd);
@@ -386,6 +388,8 @@ int tp2854sub_check_deviceId(struct i2c_client *client)
 {
 	u8 val = 0; 
 
+    pr_info("%s\r\n", __func__);
+
 	/* read TP2854_ID_1 */
 	tp2854_read_reg(client, TP2854_ID1_REG, &val);
 	dev_info(&client->dev,  "tp2854 read 0xfe %x\n", val);
@@ -520,9 +524,12 @@ static int tp2854sub_probe(struct i2c_client *client,
 
 	dev_info(&client->dev, "tp2854sub_probe ver 1.1\n");
 	//check if tp2854 exist
-	if (tp2854sub_check_deviceId(client) < 0)
-		return 0;
 
+    if (tp2854_id_check == 0 && tp2854sub_check_deviceId(client) < 0) {
+        return -1;
+    }
+
+    tp2854_id_check = 1;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
